@@ -56,7 +56,7 @@ GOVERNOR_SECRET = os.environ.get('GOVERNOR_SECRET', 'GOV-SEATTLE-2024')
 security = HTTPBearer()
 
 app = FastAPI()
-api_router = APIRouter(prefix="/api")
+api_router = APIRouter()
 
 class RolePermissions(BaseModel):
     can_manage_ministries: bool = False
