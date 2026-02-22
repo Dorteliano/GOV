@@ -76,7 +76,7 @@ const NewsManager = () => {
   const openCreateDialog = () => {
     setEditMode(false);
     setCurrentNews(null);
-    setFormData({ title: '', content: '', image: '' });
+    setFormData({ title: '', content: '', image: '', is_archive: activeTab === 'archive' });
     setDialogOpen(true);
   };
 
@@ -86,7 +86,8 @@ const NewsManager = () => {
     setFormData({
       title: item.title,
       content: item.content,
-      image: item.image || ''
+      image: item.image || '',
+      is_archive: item.is_archive || false
     });
     setDialogOpen(true);
   };
