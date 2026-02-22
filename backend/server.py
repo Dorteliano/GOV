@@ -29,8 +29,8 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'majestic-gov-secret-key-2024')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
-# Governor secret code (супер-админ)
-GOVERNOR_SECRET = os.environ.get('GOVERNOR_SECRET', 'GOV-MAJESTIC-2024')
+# Governor secret code
+GOVERNOR_SECRET = os.environ.get('GOVERNOR_SECRET', 'GOV-SEATTLE-2024')
 
 security = HTTPBearer()
 
@@ -45,6 +45,7 @@ class RolePermissions(BaseModel):
     can_manage_news: bool = False
     can_manage_legislation: bool = False
     can_manage_roles: bool = False
+    can_manage_leadership: bool = False
     can_delete: bool = False
 
 class RoleCreate(BaseModel):
@@ -60,9 +61,33 @@ class RoleResponse(BaseModel):
     created_at: str
     created_by: str
 
+# Leadership (Руководство штата)
+class LeadershipCreate(BaseModel):
+    name: str
+    surname: str
+    position: str
+    photo: Optional[str] = None
+    email: Optional[str] = None
+    passport_number: Optional[str] = None
+    appointed_date: str
+    order: int = 0
+
+class LeadershipResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    surname: str
+    position: str
+    photo: Optional[str] = None
+    email: Optional[str] = None
+    passport_number: Optional[str] = None
+    appointed_date: str
+    order: int
+    created_at: str
+
 class UserCreate(BaseModel):
     username: str
-    access_code: str  # Changed from password to access_code
+    access_code: str
 
 class GovernorCreate(BaseModel):
     username: str
@@ -71,7 +96,7 @@ class GovernorCreate(BaseModel):
 
 class UserLogin(BaseModel):
     username: str
-    password: str  # This will be access_code for regular users
+    password: str
 
 class UserResponse(BaseModel):
     id: str
@@ -91,6 +116,7 @@ class DeputyModel(BaseModel):
     name: str
     photo: Optional[str] = None
     position: str
+    role_id: Optional[str] = None
     appointed_date: str
     contact: Optional[str] = None
 
@@ -98,6 +124,7 @@ class MinisterModel(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     photo: Optional[str] = None
+    role_id: Optional[str] = None
     appointed_date: str
     contact: Optional[str] = None
     deputies: List[DeputyModel] = []
@@ -125,6 +152,7 @@ class NewsCreate(BaseModel):
     title: str
     content: str
     image: Optional[str] = None
+    is_archive: bool = False
 
 class NewsResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -132,18 +160,20 @@ class NewsResponse(BaseModel):
     title: str
     content: str
     image: Optional[str] = None
+    is_archive: bool = False
     created_at: str
 
-class LegislationCreate(BaseModel):
-    decree_number: str
+# Senate amendments (Поправки Сената)
+class AmendmentCreate(BaseModel):
+    number: str
     title: str
     content: str
-    status: str = "Pending"
+    status: str = "Принято"
 
-class LegislationResponse(BaseModel):
+class AmendmentResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
-    decree_number: str
+    number: str
     title: str
     content: str
     status: str
@@ -152,7 +182,6 @@ class LegislationResponse(BaseModel):
 # === HELPER FUNCTIONS ===
 
 def generate_access_code(length: int = 8) -> str:
-    """Generate a random access code"""
     chars = string.ascii_uppercase + string.digits
     return ''.join(secrets.choice(chars) for _ in range(length))
 
@@ -187,13 +216,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="Invalid token")
 
 async def get_user_permissions(user: dict) -> RolePermissions:
-    """Get user permissions based on role"""
     if user.get("role") == "governor":
         return RolePermissions(
             can_manage_ministries=True,
             can_manage_news=True,
             can_manage_legislation=True,
             can_manage_roles=True,
+            can_manage_leadership=True,
             can_delete=True
         )
     
@@ -204,14 +233,10 @@ async def get_user_permissions(user: dict) -> RolePermissions:
     return RolePermissions()
 
 def require_permission(permission: str):
-    """Dependency to check specific permission"""
     async def check_permission(current_user: dict = Depends(get_current_user)):
         permissions = await get_user_permissions(current_user)
-        
-        # Governor has all permissions
         if current_user.get("role") == "governor":
             return current_user
-        
         if not getattr(permissions, permission, False):
             raise HTTPException(status_code=403, detail="Permission denied")
         return current_user
@@ -221,12 +246,9 @@ def require_permission(permission: str):
 
 @api_router.post("/auth/register-governor", response_model=TokenResponse)
 async def register_governor(data: GovernorCreate):
-    """Register the Governor (super admin) - only one allowed"""
-    # Check governor secret
     if data.governor_secret != GOVERNOR_SECRET:
         raise HTTPException(status_code=403, detail="Invalid governor secret")
     
-    # Check if governor already exists
     existing_governor = await db.users.find_one({"role": "governor"})
     if existing_governor:
         raise HTTPException(status_code=400, detail="Governor already registered")
@@ -254,6 +276,7 @@ async def register_governor(data: GovernorCreate):
         can_manage_news=True,
         can_manage_legislation=True,
         can_manage_roles=True,
+        can_manage_leadership=True,
         can_delete=True
     )
     
@@ -272,8 +295,6 @@ async def register_governor(data: GovernorCreate):
 
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register_with_code(data: UserCreate):
-    """Register a new user with access code"""
-    # Find role by access code
     role = await db.roles.find_one({"access_code": data.access_code}, {"_id": 0})
     if not role:
         raise HTTPException(status_code=400, detail="Invalid access code")
@@ -288,7 +309,7 @@ async def register_with_code(data: UserCreate):
     user_doc = {
         "id": user_id,
         "username": data.username,
-        "password": hash_password(data.access_code),  # Use access code as password
+        "password": hash_password(data.access_code),
         "role": role["id"],
         "role_name": role["name"],
         "created_at": created_at
@@ -312,7 +333,6 @@ async def register_with_code(data: UserCreate):
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(data: UserLogin):
-    """Login with username and password/access_code"""
     user = await db.users.find_one({"username": data.username}, {"_id": 0})
     if not user or not verify_password(data.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -346,15 +366,20 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/auth/check-governor")
 async def check_governor():
-    """Check if governor is already registered"""
     existing = await db.users.find_one({"role": "governor"})
     return {"exists": existing is not None}
 
-# === ROLE MANAGEMENT ROUTES ===
+# === ROLE MANAGEMENT ===
 
 @api_router.get("/roles", response_model=List[RoleResponse])
 async def get_roles(current_user: dict = Depends(require_permission("can_manage_roles"))):
     roles = await db.roles.find({}, {"_id": 0}).to_list(100)
+    return roles
+
+@api_router.get("/roles/all")
+async def get_all_roles():
+    """Get all roles (public - for ministry assignment)"""
+    roles = await db.roles.find({}, {"_id": 0, "access_code": 0}).to_list(100)
     return roles
 
 @api_router.post("/roles", response_model=RoleResponse)
@@ -392,10 +417,9 @@ async def update_role(role_id: str, role: RoleCreate, current_user: dict = Depen
 
 @api_router.delete("/roles/{role_id}")
 async def delete_role(role_id: str, current_user: dict = Depends(require_permission("can_manage_roles"))):
-    # Check if any users have this role
     users_with_role = await db.users.count_documents({"role": role_id})
     if users_with_role > 0:
-        raise HTTPException(status_code=400, detail=f"Cannot delete role: {users_with_role} users have this role")
+        raise HTTPException(status_code=400, detail=f"Cannot delete: {users_with_role} users have this role")
     
     result = await db.roles.delete_one({"id": role_id})
     if result.deleted_count == 0:
@@ -416,13 +440,11 @@ async def regenerate_access_code(role_id: str, current_user: dict = Depends(requ
 
 @api_router.get("/users", response_model=List[dict])
 async def get_users(current_user: dict = Depends(require_permission("can_manage_roles"))):
-    """Get all users (for role management)"""
     users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(100)
     return users
 
 @api_router.delete("/users/{user_id}")
 async def delete_user(user_id: str, current_user: dict = Depends(require_permission("can_manage_roles"))):
-    """Delete a user"""
     user = await db.users.find_one({"id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -435,6 +457,44 @@ async def delete_user(user_id: str, current_user: dict = Depends(require_permiss
     
     await db.users.delete_one({"id": user_id})
     return {"message": "User deleted"}
+
+# === LEADERSHIP (Руководство штата) ===
+
+@api_router.get("/leadership", response_model=List[LeadershipResponse])
+async def get_leadership():
+    leaders = await db.leadership.find({}, {"_id": 0}).sort("order", 1).to_list(100)
+    return leaders
+
+@api_router.post("/leadership", response_model=LeadershipResponse)
+async def create_leader(leader: LeadershipCreate, current_user: dict = Depends(require_permission("can_manage_leadership"))):
+    leader_id = str(uuid.uuid4())
+    created_at = datetime.now(timezone.utc).isoformat()
+    
+    leader_doc = {
+        "id": leader_id,
+        **leader.model_dump(),
+        "created_at": created_at
+    }
+    await db.leadership.insert_one(leader_doc)
+    leader_doc.pop("_id", None)
+    return leader_doc
+
+@api_router.put("/leadership/{leader_id}", response_model=LeadershipResponse)
+async def update_leader(leader_id: str, leader: LeadershipCreate, current_user: dict = Depends(require_permission("can_manage_leadership"))):
+    existing = await db.leadership.find_one({"id": leader_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Leader not found")
+    
+    await db.leadership.update_one({"id": leader_id}, {"$set": leader.model_dump()})
+    updated = await db.leadership.find_one({"id": leader_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/leadership/{leader_id}")
+async def delete_leader(leader_id: str, current_user: dict = Depends(require_permission("can_delete"))):
+    result = await db.leadership.delete_one({"id": leader_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Leader not found")
+    return {"message": "Leader deleted"}
 
 # === MINISTRY ROUTES ===
 
@@ -470,9 +530,7 @@ async def update_ministry(ministry_id: str, ministry: MinistryCreate, current_us
     if not existing:
         raise HTTPException(status_code=404, detail="Ministry not found")
     
-    update_data = ministry.model_dump()
-    await db.ministries.update_one({"id": ministry_id}, {"$set": update_data})
-    
+    await db.ministries.update_one({"id": ministry_id}, {"$set": ministry.model_dump()})
     updated = await db.ministries.find_one({"id": ministry_id}, {"_id": 0})
     return updated
 
@@ -486,8 +544,9 @@ async def delete_ministry(ministry_id: str, current_user: dict = Depends(require
 # === NEWS ROUTES ===
 
 @api_router.get("/news", response_model=List[NewsResponse])
-async def get_news():
-    news = await db.news.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+async def get_news(archive: bool = False):
+    query = {"is_archive": archive}
+    news = await db.news.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     return news
 
 @api_router.get("/news/{news_id}", response_model=NewsResponse)
@@ -528,50 +587,50 @@ async def delete_news(news_id: str, current_user: dict = Depends(require_permiss
         raise HTTPException(status_code=404, detail="News not found")
     return {"message": "News deleted"}
 
-# === LEGISLATION ROUTES ===
+# === AMENDMENTS (Поправки Сената) ===
 
-@api_router.get("/legislation", response_model=List[LegislationResponse])
-async def get_legislation():
-    laws = await db.legislation.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
-    return laws
+@api_router.get("/amendments", response_model=List[AmendmentResponse])
+async def get_amendments():
+    amendments = await db.amendments.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return amendments
 
-@api_router.get("/legislation/{law_id}", response_model=LegislationResponse)
-async def get_legislation_item(law_id: str):
-    law = await db.legislation.find_one({"id": law_id}, {"_id": 0})
-    if not law:
-        raise HTTPException(status_code=404, detail="Legislation not found")
-    return law
+@api_router.get("/amendments/{amendment_id}", response_model=AmendmentResponse)
+async def get_amendment(amendment_id: str):
+    amendment = await db.amendments.find_one({"id": amendment_id}, {"_id": 0})
+    if not amendment:
+        raise HTTPException(status_code=404, detail="Amendment not found")
+    return amendment
 
-@api_router.post("/legislation", response_model=LegislationResponse)
-async def create_legislation(law: LegislationCreate, current_user: dict = Depends(require_permission("can_manage_legislation"))):
-    law_id = str(uuid.uuid4())
+@api_router.post("/amendments", response_model=AmendmentResponse)
+async def create_amendment(amendment: AmendmentCreate, current_user: dict = Depends(require_permission("can_manage_legislation"))):
+    amendment_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     
-    law_doc = {
-        "id": law_id,
-        **law.model_dump(),
+    amendment_doc = {
+        "id": amendment_id,
+        **amendment.model_dump(),
         "created_at": created_at
     }
-    await db.legislation.insert_one(law_doc)
-    law_doc.pop("_id", None)
-    return law_doc
+    await db.amendments.insert_one(amendment_doc)
+    amendment_doc.pop("_id", None)
+    return amendment_doc
 
-@api_router.put("/legislation/{law_id}", response_model=LegislationResponse)
-async def update_legislation(law_id: str, law: LegislationCreate, current_user: dict = Depends(require_permission("can_manage_legislation"))):
-    existing = await db.legislation.find_one({"id": law_id})
+@api_router.put("/amendments/{amendment_id}", response_model=AmendmentResponse)
+async def update_amendment(amendment_id: str, amendment: AmendmentCreate, current_user: dict = Depends(require_permission("can_manage_legislation"))):
+    existing = await db.amendments.find_one({"id": amendment_id})
     if not existing:
-        raise HTTPException(status_code=404, detail="Legislation not found")
+        raise HTTPException(status_code=404, detail="Amendment not found")
     
-    await db.legislation.update_one({"id": law_id}, {"$set": law.model_dump()})
-    updated = await db.legislation.find_one({"id": law_id}, {"_id": 0})
+    await db.amendments.update_one({"id": amendment_id}, {"$set": amendment.model_dump()})
+    updated = await db.amendments.find_one({"id": amendment_id}, {"_id": 0})
     return updated
 
-@api_router.delete("/legislation/{law_id}")
-async def delete_legislation(law_id: str, current_user: dict = Depends(require_permission("can_delete"))):
-    result = await db.legislation.delete_one({"id": law_id})
+@api_router.delete("/amendments/{amendment_id}")
+async def delete_amendment(amendment_id: str, current_user: dict = Depends(require_permission("can_delete"))):
+    result = await db.amendments.delete_one({"id": amendment_id})
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Legislation not found")
-    return {"message": "Legislation deleted"}
+        raise HTTPException(status_code=404, detail="Amendment not found")
+    return {"message": "Amendment deleted"}
 
 # === IMAGE UPLOAD ===
 
@@ -587,9 +646,8 @@ async def upload_image(file: UploadFile = File(...), current_user: dict = Depend
 
 @api_router.get("/")
 async def root():
-    return {"message": "Majestic Government API"}
+    return {"message": "Seattle Government API"}
 
-# Include router
 app.include_router(api_router)
 
 app.add_middleware(
