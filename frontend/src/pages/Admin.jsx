@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Shield, Star, Building2, Newspaper, Scale, LogOut, Menu, X,
-  Plus, Edit, Trash2, Users, Home, ChevronRight
+  Users, Home, ChevronRight, Crown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import MinistryManager from '../components/admin/MinistryManager';
 import NewsManager from '../components/admin/NewsManager';
 import LegislationManager from '../components/admin/LegislationManager';
+import RoleManager from '../components/admin/RoleManager';
 
 const Admin = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('ministries');
-  const { user, logout, isAuthenticated, loading } = useAuth();
+  const { user, logout, isAuthenticated, loading, isGovernor, hasPermission } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -28,11 +28,24 @@ const Admin = () => {
     navigate('/');
   };
 
-  const sidebarLinks = [
-    { id: 'ministries', label: 'Министерства', icon: Building2 },
-    { id: 'news', label: 'Новости', icon: Newspaper },
-    { id: 'legislation', label: 'Законодательство', icon: Scale },
+  // Filter sidebar links based on permissions
+  const allLinks = [
+    { id: 'ministries', label: 'Министерства', icon: Building2, permission: 'can_manage_ministries' },
+    { id: 'news', label: 'Новости', icon: Newspaper, permission: 'can_manage_news' },
+    { id: 'legislation', label: 'Законодательство', icon: Scale, permission: 'can_manage_legislation' },
+    { id: 'roles', label: 'Роли и доступ', icon: Users, permission: 'can_manage_roles' },
   ];
+
+  const sidebarLinks = allLinks.filter(link => 
+    isGovernor || hasPermission(link.permission)
+  );
+
+  // Set default active tab to first available
+  useEffect(() => {
+    if (sidebarLinks.length > 0 && !sidebarLinks.find(l => l.id === activeTab)) {
+      setActiveTab(sidebarLinks[0].id);
+    }
+  }, [sidebarLinks, activeTab]);
 
   if (loading) {
     return (
@@ -56,12 +69,20 @@ const Admin = () => {
       >
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-primary" />
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              isGovernor ? 'bg-primary/20' : 'bg-white/5'
+            }`}>
+              {isGovernor ? (
+                <Crown className="w-5 h-5 text-primary" />
+              ) : (
+                <Users className="w-5 h-5 text-muted-foreground" />
+              )}
             </div>
             <div>
               <p className="text-sm text-white font-medium">{user?.username}</p>
-              <p className="text-xs text-muted-foreground">Администратор</p>
+              <p className={`text-xs ${isGovernor ? 'text-primary' : 'text-muted-foreground'}`}>
+                {user?.role_name || 'Администратор'}
+              </p>
             </div>
           </div>
 
@@ -131,6 +152,7 @@ const Admin = () => {
             {activeTab === 'ministries' && <MinistryManager />}
             {activeTab === 'news' && <NewsManager />}
             {activeTab === 'legislation' && <LegislationManager />}
+            {activeTab === 'roles' && <RoleManager />}
           </motion.div>
         </div>
       </main>
