@@ -322,6 +322,18 @@ const NewsManager = () => {
               </div>
             </div>
 
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="is_archive"
+                checked={formData.is_archive}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_archive: checked })}
+                className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+              />
+              <label htmlFor="is_archive" className="text-sm text-gray-300 cursor-pointer">
+                Добавить в Архив штата
+              </label>
+            </div>
+
             <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
               <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>
                 Отмена
