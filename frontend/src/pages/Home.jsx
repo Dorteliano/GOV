@@ -59,18 +59,6 @@ const Home = () => {
           transition={{ duration: 1, ease: 'easeOut' }}
           className="relative z-10 text-center px-6 max-w-4xl mx-auto"
         >
-          {/* Emblem */}
-          <div className="flex justify-center mb-8">
-            <motion.img
-              src={EMBLEM_URL}
-              alt="Government Emblem"
-              className="w-40 h-40 md:w-56 md:h-56 object-contain"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            />
-          </div>
-          
           <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl tracking-widest text-white mb-6">
             <span className="gold-shine">ПРАВИТЕЛЬСТВО</span>
           </h1>
