@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Newspaper, Calendar, ChevronRight } from 'lucide-react';
+import { Newspaper, Calendar, ChevronRight, Archive } from 'lucide-react';
 import axios from 'axios';
 import { formatDate } from '../lib/utils';
 
@@ -8,8 +8,10 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const News = () => {
   const [news, setNews] = useState([]);
+  const [archiveNews, setArchiveNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedNews, setSelectedNews] = useState(null);
+  const [activeTab, setActiveTab] = useState('news');
 
   useEffect(() => {
     fetchNews();
@@ -17,14 +19,20 @@ const News = () => {
 
   const fetchNews = async () => {
     try {
-      const response = await axios.get(`${API}/news`);
-      setNews(response.data);
+      const [newsRes, archiveRes] = await Promise.all([
+        axios.get(`${API}/news?archive=false`),
+        axios.get(`${API}/news?archive=true`)
+      ]);
+      setNews(newsRes.data);
+      setArchiveNews(archiveRes.data);
     } catch (error) {
       console.error('Failed to fetch news:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const currentNews = activeTab === 'news' ? news : archiveNews;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -54,14 +62,44 @@ const News = () => {
               <h1 className="font-heading text-3xl sm:text-4xl tracking-widest text-white">НОВОСТИ</h1>
             </div>
             <p className="text-muted-foreground max-w-2xl">
-              Актуальные события, объявления и новости правительства штата San Andreas.
+              Актуальные события, объявления и новости правительства штата Seattle.
             </p>
           </motion.div>
         </div>
       </section>
 
+      {/* Tabs */}
+      <section className="px-6 sm:px-8 pt-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex gap-4 mb-8">
+            <button
+              onClick={() => { setActiveTab('news'); setSelectedNews(null); }}
+              className={`px-6 py-3 rounded-sm font-medium transition-colors ${
+                activeTab === 'news'
+                  ? 'bg-primary text-black'
+                  : 'bg-white/5 text-muted-foreground hover:text-white'
+              }`}
+            >
+              <Newspaper className="w-4 h-4 inline mr-2" />
+              Новости ({news.length})
+            </button>
+            <button
+              onClick={() => { setActiveTab('archive'); setSelectedNews(null); }}
+              className={`px-6 py-3 rounded-sm font-medium transition-colors ${
+                activeTab === 'archive'
+                  ? 'bg-primary text-black'
+                  : 'bg-white/5 text-muted-foreground hover:text-white'
+              }`}
+            >
+              <Archive className="w-4 h-4 inline mr-2" />
+              Архив штата ({archiveNews.length})
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* News List */}
-      <section className="py-16 px-6 sm:px-8">
+      <section className="py-8 px-6 sm:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-3 gap-8">
             {/* News List */}
@@ -76,14 +114,14 @@ const News = () => {
                     </div>
                   ))}
                 </div>
-              ) : news.length > 0 ? (
+              ) : currentNews.length > 0 ? (
                 <motion.div
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
                   className="space-y-4"
                 >
-                  {news.map((item) => (
+                  {currentNews.map((item) => (
                     <motion.div
                       key={item.id}
                       variants={itemVariants}
@@ -98,6 +136,9 @@ const News = () => {
                         <span className="font-mono text-xs text-muted-foreground">
                           {formatDate(item.created_at)}
                         </span>
+                        {item.is_archive && (
+                          <span className="px-2 py-0.5 bg-white/10 text-xs rounded">Архив</span>
+                        )}
                       </div>
                       <h3 className="font-subheading text-lg text-white mb-2">{item.title}</h3>
                       <p className="text-muted-foreground text-sm line-clamp-2">{item.content}</p>
@@ -110,9 +151,17 @@ const News = () => {
                 </motion.div>
               ) : (
                 <div className="text-center py-20">
-                  <Newspaper className="w-16 h-16 text-muted-foreground mx-auto mb-6 opacity-50" />
-                  <h3 className="font-subheading text-xl text-white mb-3">Новостей пока нет</h3>
-                  <p className="text-muted-foreground">Новости скоро появятся</p>
+                  {activeTab === 'archive' ? (
+                    <Archive className="w-16 h-16 text-muted-foreground mx-auto mb-6 opacity-50" />
+                  ) : (
+                    <Newspaper className="w-16 h-16 text-muted-foreground mx-auto mb-6 opacity-50" />
+                  )}
+                  <h3 className="font-subheading text-xl text-white mb-3">
+                    {activeTab === 'archive' ? 'Архив пуст' : 'Новостей пока нет'}
+                  </h3>
+                  <p className="text-muted-foreground">
+                    {activeTab === 'archive' ? 'Документы архива скоро появятся' : 'Новости скоро появятся'}
+                  </p>
                 </div>
               )}
             </div>
