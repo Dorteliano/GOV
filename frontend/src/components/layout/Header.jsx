@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Shield, Star } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+
+// New logo from user
+const LOGO_URL = 'https://customer-assets.emergentagent.com/job_dark-gov-agency/artifacts/ezxmaarb_image%20%285%29.png';
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -13,7 +16,7 @@ const Header = () => {
     { path: '/', label: 'Главная' },
     { path: '/ministries', label: 'Министерства' },
     { path: '/news', label: 'Новости' },
-    { path: '/legislation', label: 'Законодательство' },
+    { path: '/amendments', label: 'Поправки Сената' },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -24,12 +27,13 @@ const Header = () => {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group" data-testid="header-logo">
-            <div className="relative">
-              <Shield className="w-10 h-10 text-primary transition-transform group-hover:scale-110" />
-              <Star className="w-4 h-4 text-primary absolute -top-1 -right-1" />
-            </div>
+            <img 
+              src={LOGO_URL} 
+              alt="Seattle Government" 
+              className="w-12 h-12 object-contain"
+            />
             <div>
-              <h1 className="font-heading text-xl tracking-widest text-primary">MAJESTIC</h1>
+              <h1 className="font-heading text-lg tracking-widest text-primary">SEATTLE</h1>
               <p className="text-xs tracking-wider text-muted-foreground">GOVERNMENT</p>
             </div>
           </Link>
