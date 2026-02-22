@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Building2, Newspaper, Scale, ChevronRight, Star, Users } from 'lucide-react';
+import { Building2, Newspaper, Scale, ChevronRight, Users } from 'lucide-react';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Герб из assets пользователя
+const EMBLEM_URL = 'https://customer-assets.emergentagent.com/job_dark-gov-agency/artifacts/gkb89uqq_image.png';
 
 const Home = () => {
   const [news, setNews] = useState([]);
@@ -43,8 +46,9 @@ const Home = () => {
   return (
     <div className="min-h-screen" data-testid="home-page">
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center hero-bg">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+      <section className="relative min-h-screen flex items-center justify-center bg-background">
+        {/* Subtle background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background-paper/20 to-background" />
         
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -52,11 +56,16 @@ const Home = () => {
           transition={{ duration: 1, ease: 'easeOut' }}
           className="relative z-10 text-center px-6 max-w-4xl mx-auto"
         >
+          {/* Emblem */}
           <div className="flex justify-center mb-8">
-            <div className="relative">
-              <Shield className="w-24 h-24 text-primary" />
-              <Star className="w-8 h-8 text-primary absolute -top-2 -right-2 animate-pulse" />
-            </div>
+            <motion.img
+              src={EMBLEM_URL}
+              alt="Government Emblem"
+              className="w-40 h-40 md:w-56 md:h-56 object-contain filter invert opacity-90"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 0.9 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            />
           </div>
           
           <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl tracking-widest text-white mb-6">
@@ -137,7 +146,7 @@ const Home = () => {
               { icon: Building2, label: 'Министерств', value: ministries.length || '—' },
               { icon: Users, label: 'Сотрудников', value: '50+' },
               { icon: Scale, label: 'Законов', value: '100+' },
-              { icon: Shield, label: 'Лет службы', value: '3+' },
+              { icon: Newspaper, label: 'Новостей', value: news.length || '—' },
             ].map((stat, idx) => (
               <motion.div
                 key={idx}
