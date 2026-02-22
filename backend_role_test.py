@@ -5,7 +5,7 @@ import uuid
 import json
 
 class RoleBasedAPITester:
-    def __init__(self, base_url="https://dark-gov-agency.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://seattle-gov-admin.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
         self.governor_token = None
