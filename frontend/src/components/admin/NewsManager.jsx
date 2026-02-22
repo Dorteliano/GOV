@@ -135,13 +135,39 @@ const NewsManager = () => {
             НОВОСТИ
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Управление новостями и объявлениями
+            Управление новостями и архивом
           </p>
         </div>
         <Button onClick={openCreateDialog} className="btn-gold" data-testid="add-news-btn">
           <Plus className="w-4 h-4 mr-2" />
           Добавить
         </Button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-4 mb-6">
+        <button
+          onClick={() => setActiveTab('news')}
+          className={`px-4 py-2 rounded-md transition-colors ${
+            activeTab === 'news'
+              ? 'bg-primary text-black'
+              : 'bg-white/5 text-muted-foreground hover:text-white'
+          }`}
+        >
+          <Newspaper className="w-4 h-4 inline mr-2" />
+          Новости ({news.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('archive')}
+          className={`px-4 py-2 rounded-md transition-colors ${
+            activeTab === 'archive'
+              ? 'bg-primary text-black'
+              : 'bg-white/5 text-muted-foreground hover:text-white'
+          }`}
+        >
+          <Archive className="w-4 h-4 inline mr-2" />
+          Архив штата ({archiveNews.length})
+        </button>
       </div>
 
       {/* List */}
@@ -154,9 +180,9 @@ const NewsManager = () => {
             </div>
           ))}
         </div>
-      ) : news.length > 0 ? (
+      ) : currentList.length > 0 ? (
         <div className="grid gap-4">
-          {news.map((item) => (
+          {currentList.map((item) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, y: 10 }}
