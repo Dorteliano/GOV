@@ -237,11 +237,17 @@ const NewsManager = () => {
         </div>
       ) : (
         <div className="text-center py-16 bg-background-paper rounded-lg border border-white/10">
-          <Newspaper className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-          <p className="text-muted-foreground">Новостей не найдено</p>
+          {activeTab === 'archive' ? (
+            <Archive className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+          ) : (
+            <Newspaper className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+          )}
+          <p className="text-muted-foreground">
+            {activeTab === 'archive' ? 'Архив пуст' : 'Новостей не найдено'}
+          </p>
           <Button onClick={openCreateDialog} className="mt-4 btn-outline-gold">
             <Plus className="w-4 h-4 mr-2" />
-            Добавить первую
+            Добавить {activeTab === 'archive' ? 'в архив' : 'новость'}
           </Button>
         </div>
       )}
