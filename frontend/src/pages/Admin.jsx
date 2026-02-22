@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Shield, Star, Building2, Newspaper, Scale, LogOut, Menu, X,
-  Users, Home, ChevronRight, Crown
+  Building2, Newspaper, Scale, LogOut, Menu, X,
+  Users, Home, ChevronRight, Crown, Key
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import MinistryManager from '../components/admin/MinistryManager';
 import NewsManager from '../components/admin/NewsManager';
-import LegislationManager from '../components/admin/LegislationManager';
+import AmendmentsManager from '../components/admin/AmendmentsManager';
 import RoleManager from '../components/admin/RoleManager';
+import LeadershipManager from '../components/admin/LeadershipManager';
 
 const Admin = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -28,19 +29,18 @@ const Admin = () => {
     navigate('/');
   };
 
-  // Filter sidebar links based on permissions
   const allLinks = [
+    { id: 'leadership', label: 'Руководство', icon: Users, permission: 'can_manage_leadership' },
     { id: 'ministries', label: 'Министерства', icon: Building2, permission: 'can_manage_ministries' },
     { id: 'news', label: 'Новости', icon: Newspaper, permission: 'can_manage_news' },
-    { id: 'legislation', label: 'Законодательство', icon: Scale, permission: 'can_manage_legislation' },
-    { id: 'roles', label: 'Роли и доступ', icon: Users, permission: 'can_manage_roles' },
+    { id: 'amendments', label: 'Поправки Сената', icon: Scale, permission: 'can_manage_legislation' },
+    { id: 'roles', label: 'Должности', icon: Key, permission: 'can_manage_roles' },
   ];
 
   const sidebarLinks = allLinks.filter(link => 
     isGovernor || hasPermission(link.permission)
   );
 
-  // Set default active tab to first available
   useEffect(() => {
     if (sidebarLinks.length > 0 && !sidebarLinks.find(l => l.id === activeTab)) {
       setActiveTab(sidebarLinks[0].id);
@@ -149,9 +149,10 @@ const Admin = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
+            {activeTab === 'leadership' && <LeadershipManager />}
             {activeTab === 'ministries' && <MinistryManager />}
             {activeTab === 'news' && <NewsManager />}
-            {activeTab === 'legislation' && <LegislationManager />}
+            {activeTab === 'amendments' && <AmendmentsManager />}
             {activeTab === 'roles' && <RoleManager />}
           </motion.div>
         </div>
