@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Building2, Newspaper, Scale, ChevronRight, Users } from 'lucide-react';
+import { Building2, Newspaper, Scale, ChevronRight, Users, Mail, Clock, CreditCard } from 'lucide-react';
 import axios from 'axios';
+import { calculateDaysInPosition } from '../lib/utils';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Герб из assets пользователя
-const EMBLEM_URL = 'https://customer-assets.emergentagent.com/job_dark-gov-agency/artifacts/gkb89uqq_image.png';
+// Emblem and logo
+const EMBLEM_URL = 'https://customer-assets.emergentagent.com/job_dark-gov-agency/artifacts/xpkfdl3k_image.png';
 
 const Home = () => {
   const [news, setNews] = useState([]);
   const [ministries, setMinistries] = useState([]);
+  const [leadership, setLeadership] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -19,12 +21,14 @@ const Home = () => {
 
   const fetchData = async () => {
     try {
-      const [newsRes, ministriesRes] = await Promise.all([
+      const [newsRes, ministriesRes, leadershipRes] = await Promise.all([
         axios.get(`${API}/news`),
-        axios.get(`${API}/ministries`)
+        axios.get(`${API}/ministries`),
+        axios.get(`${API}/leadership`)
       ]);
       setNews(newsRes.data.slice(0, 3));
       setMinistries(ministriesRes.data.slice(0, 4));
+      setLeadership(leadershipRes.data);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
@@ -47,7 +51,6 @@ const Home = () => {
     <div className="min-h-screen" data-testid="home-page">
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center bg-background">
-        {/* Subtle background gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-background via-background-paper/20 to-background" />
         
         <motion.div
@@ -61,21 +64,21 @@ const Home = () => {
             <motion.img
               src={EMBLEM_URL}
               alt="Government Emblem"
-              className="w-40 h-40 md:w-56 md:h-56 object-contain filter invert opacity-90"
+              className="w-40 h-40 md:w-56 md:h-56 object-contain"
               initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 0.9 }}
+              animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             />
           </div>
           
           <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl tracking-widest text-white mb-6">
-            <span className="gold-shine">GOVERNMENT</span>
+            <span className="gold-shine">ПРАВИТЕЛЬСТВО</span>
           </h1>
           <h2 className="font-subheading text-xl sm:text-2xl text-gray-300 mb-4">
-            MAJESTIC ROLEPLAY
+            ШТАТА SEATTLE
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-10">
-            Официальный портал Правительства штата San Andreas. 
+            Официальный портал Правительства штата Seattle. 
             Служим народу с честью и достоинством.
           </p>
           
@@ -89,12 +92,12 @@ const Home = () => {
               Министерства
             </Link>
             <Link
-              to="/legislation"
+              to="/amendments"
               data-testid="hero-legislation-btn"
               className="px-8 py-4 btn-outline-gold rounded-sm inline-flex items-center justify-center gap-2"
             >
               <Scale className="w-5 h-5" />
-              Законодательство
+              Поправки Сената
             </Link>
           </div>
         </motion.div>
@@ -116,8 +119,101 @@ const Home = () => {
         </motion.div>
       </section>
 
-      {/* Mission Section */}
+      {/* Leadership Section */}
       <section className="py-24 px-6 sm:px-8 bg-background-paper">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-12"
+          >
+            <h2 className="font-heading text-3xl tracking-widest text-primary mb-4">РУКОВОДСТВО ШТАТА</h2>
+            <p className="text-muted-foreground">Губернатор и его команда</p>
+          </motion.div>
+
+          {leadership.length > 0 ? (
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {leadership.map((leader, idx) => (
+                <motion.div
+                  key={leader.id}
+                  variants={itemVariants}
+                  className={`bg-background border border-white/10 rounded-lg p-6 hover:border-primary/30 transition-colors ${
+                    idx === 0 ? 'md:col-span-2 lg:col-span-1 lg:row-span-1' : ''
+                  }`}
+                >
+                  <div className="flex flex-col items-center text-center">
+                    {/* Photo */}
+                    <div className={`${idx === 0 ? 'w-32 h-32' : 'w-24 h-24'} rounded-lg overflow-hidden bg-background-paper border border-white/10 mb-4`}>
+                      {leader.photo ? (
+                        <img
+                          src={leader.photo}
+                          alt={`${leader.name} ${leader.surname}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Users className="w-10 h-10 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Position */}
+                    <span className={`inline-block px-3 py-1 ${idx === 0 ? 'bg-primary/20 text-primary' : 'bg-white/5 text-muted-foreground'} text-xs font-bold tracking-wider rounded-sm mb-3`}>
+                      {leader.position}
+                    </span>
+
+                    {/* Name */}
+                    <h3 className="font-subheading text-xl text-white mb-4">
+                      {leader.name} {leader.surname}
+                    </h3>
+
+                    {/* Info */}
+                    <div className="space-y-2 text-sm">
+                      {leader.email && (
+                        <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                          <Mail className="w-4 h-4 text-primary" />
+                          <span>{leader.email}</span>
+                        </div>
+                      )}
+                      {leader.passport_number && (
+                        <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                          <CreditCard className="w-4 h-4 text-primary" />
+                          <span>Паспорт: {leader.passport_number}</span>
+                        </div>
+                      )}
+                      {leader.appointed_date && (
+                        <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                          <Clock className="w-4 h-4 text-primary" />
+                          <span className="font-mono text-primary">
+                            {calculateDaysInPosition(leader.appointed_date)} дней
+                          </span>
+                          <span>в должности</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Информация о руководстве скоро появится</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Mission Section */}
+      <section className="py-24 px-6 sm:px-8">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -128,7 +224,7 @@ const Home = () => {
           >
             <h2 className="font-heading text-3xl tracking-widest text-primary mb-6">НАША МИССИЯ</h2>
             <p className="text-lg text-gray-300 leading-relaxed font-subheading italic">
-              "Обеспечение благополучия и безопасности граждан штата San Andreas, 
+              "Обеспечение благополучия и безопасности граждан штата Seattle, 
               поддержание закона и порядка, развитие экономики и социальной инфраструктуры 
               для процветания нашего общества."
             </p>
@@ -144,8 +240,8 @@ const Home = () => {
           >
             {[
               { icon: Building2, label: 'Министерств', value: ministries.length || '—' },
-              { icon: Users, label: 'Сотрудников', value: '50+' },
-              { icon: Scale, label: 'Законов', value: '100+' },
+              { icon: Users, label: 'Руководителей', value: leadership.length || '—' },
+              { icon: Scale, label: 'Поправок', value: '—' },
               { icon: Newspaper, label: 'Новостей', value: news.length || '—' },
             ].map((stat, idx) => (
               <motion.div
@@ -163,7 +259,7 @@ const Home = () => {
       </section>
 
       {/* Latest News Section */}
-      <section className="py-24 px-6 sm:px-8">
+      <section className="py-24 px-6 sm:px-8 bg-background-paper">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-12">
             <div>
@@ -191,7 +287,7 @@ const Home = () => {
                 <motion.div
                   key={item.id}
                   variants={itemVariants}
-                  className="news-card bg-background-paper p-6 rounded-md"
+                  className="news-card bg-background p-6 rounded-md"
                 >
                   <div className="flex items-center gap-2 mb-4">
                     <Newspaper className="w-4 h-4 text-primary" />
@@ -221,7 +317,7 @@ const Home = () => {
       </section>
 
       {/* Quick Links */}
-      <section className="py-24 px-6 sm:px-8 bg-background-paper">
+      <section className="py-24 px-6 sm:px-8">
         <div className="max-w-7xl mx-auto">
           <motion.div
             variants={containerVariants}
@@ -245,16 +341,16 @@ const Home = () => {
               },
               { 
                 icon: Scale, 
-                title: 'Законодательство', 
-                desc: 'Законы, указы и нормативные акты штата',
-                link: '/legislation'
+                title: 'Поправки Сената', 
+                desc: 'Последние поправки принятые Сенатом',
+                link: '/amendments'
               },
             ].map((item, idx) => (
               <motion.div key={idx} variants={itemVariants}>
                 <Link
                   to={item.link}
                   data-testid={`quick-link-${item.link.replace('/', '')}`}
-                  className="block ministry-card bg-background p-8 rounded-md border border-white/5 relative overflow-hidden group"
+                  className="block ministry-card bg-background-paper p-8 rounded-md border border-white/5 relative overflow-hidden group"
                 >
                   <item.icon className="w-10 h-10 text-primary mb-6 transition-transform group-hover:scale-110" />
                   <h3 className="font-subheading text-xl text-white mb-3">{item.title}</h3>
