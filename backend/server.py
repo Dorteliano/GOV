@@ -1,5 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -16,20 +18,39 @@ import base64
 import secrets
 import string
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+env_file = ROOT_DIR / '.env'
+if env_file.exists():
+    load_dotenv(env_file)
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+MONGO_URL = os.environ.get('MONGO_URL')
+DB_NAME = os.environ.get('DB_NAME')
 
-# JWT Configuration
+if not MONGO_URL:
+    logger.error("MONGO_URL environment variable is not set!")
+    MONGO_URL = "mongodb://localhost:27017"
+
+if not DB_NAME:
+    logger.error("DB_NAME environment variable is not set!")
+    DB_NAME = "seattle_gov"
+
+client = None
+db = None
+
+try:
+    client = AsyncIOMotorClient(MONGO_URL)
+    db = client[DB_NAME]
+    logger.info(f"Connected to MongoDB: {DB_NAME}")
+except Exception as e:
+    logger.error(f"Failed to connect to MongoDB: {e}")
+
 JWT_SECRET = os.environ.get('JWT_SECRET', 'majestic-gov-secret-key-2024')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
-# Governor secret code
 GOVERNOR_SECRET = os.environ.get('GOVERNOR_SECRET', 'GOV-SEATTLE-2024')
 
 security = HTTPBearer()
@@ -37,9 +58,6 @@ security = HTTPBearer()
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-# === MODELS ===
-
-# Permissions model
 class RolePermissions(BaseModel):
     can_manage_ministries: bool = False
     can_manage_news: bool = False
@@ -61,7 +79,6 @@ class RoleResponse(BaseModel):
     created_at: str
     created_by: str
 
-# Leadership (Руководство штата)
 class LeadershipCreate(BaseModel):
     name: str
     surname: str
@@ -163,7 +180,6 @@ class NewsResponse(BaseModel):
     is_archive: bool = False
     created_at: str
 
-# Senate amendments (Поправки Сената)
 class AmendmentCreate(BaseModel):
     number: str
     title: str
@@ -178,8 +194,6 @@ class AmendmentResponse(BaseModel):
     content: str
     status: str
     created_at: str
-
-# === HELPER FUNCTIONS ===
 
 def generate_access_code(length: int = 8) -> str:
     chars = string.ascii_uppercase + string.digits
@@ -206,6 +220,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database not available")
         user = await db.users.find_one({"id": user_id}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
@@ -226,6 +242,9 @@ async def get_user_permissions(user: dict) -> RolePermissions:
             can_delete=True
         )
     
+    if db is None:
+        return RolePermissions()
+    
     role = await db.roles.find_one({"id": user.get("role")}, {"_id": 0})
     if role:
         return RolePermissions(**role.get("permissions", {}))
@@ -242,12 +261,13 @@ def require_permission(permission: str):
         return current_user
     return check_permission
 
-# === AUTH ROUTES ===
-
 @api_router.post("/auth/register-governor", response_model=TokenResponse)
 async def register_governor(data: GovernorCreate):
     if data.governor_secret != GOVERNOR_SECRET:
         raise HTTPException(status_code=403, detail="Invalid governor secret")
+    
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     
     existing_governor = await db.users.find_one({"role": "governor"})
     if existing_governor:
@@ -295,6 +315,9 @@ async def register_governor(data: GovernorCreate):
 
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register_with_code(data: UserCreate):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     role = await db.roles.find_one({"access_code": data.access_code}, {"_id": 0})
     if not role:
         raise HTTPException(status_code=400, detail="Invalid access code")
@@ -333,6 +356,9 @@ async def register_with_code(data: UserCreate):
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(data: UserLogin):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     user = await db.users.find_one({"username": data.username}, {"_id": 0})
     if not user or not verify_password(data.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -366,24 +392,30 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/auth/check-governor")
 async def check_governor():
+    if db is None:
+        return {"exists": False, "error": "Database not available"}
     existing = await db.users.find_one({"role": "governor"})
     return {"exists": existing is not None}
 
-# === ROLE MANAGEMENT ===
-
 @api_router.get("/roles", response_model=List[RoleResponse])
 async def get_roles(current_user: dict = Depends(require_permission("can_manage_roles"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     roles = await db.roles.find({}, {"_id": 0}).to_list(100)
     return roles
 
 @api_router.get("/roles/all")
 async def get_all_roles():
-    """Get all roles (public - for ministry assignment)"""
+    if db is None:
+        return []
     roles = await db.roles.find({}, {"_id": 0, "access_code": 0}).to_list(100)
     return roles
 
 @api_router.post("/roles", response_model=RoleResponse)
 async def create_role(role: RoleCreate, current_user: dict = Depends(require_permission("can_manage_roles"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     role_id = str(uuid.uuid4())
     access_code = generate_access_code()
     created_at = datetime.now(timezone.utc).isoformat()
@@ -402,6 +434,9 @@ async def create_role(role: RoleCreate, current_user: dict = Depends(require_per
 
 @api_router.put("/roles/{role_id}", response_model=RoleResponse)
 async def update_role(role_id: str, role: RoleCreate, current_user: dict = Depends(require_permission("can_manage_roles"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     existing = await db.roles.find_one({"id": role_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Role not found")
@@ -417,6 +452,9 @@ async def update_role(role_id: str, role: RoleCreate, current_user: dict = Depen
 
 @api_router.delete("/roles/{role_id}")
 async def delete_role(role_id: str, current_user: dict = Depends(require_permission("can_manage_roles"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     users_with_role = await db.users.count_documents({"role": role_id})
     if users_with_role > 0:
         raise HTTPException(status_code=400, detail=f"Cannot delete: {users_with_role} users have this role")
@@ -428,6 +466,9 @@ async def delete_role(role_id: str, current_user: dict = Depends(require_permiss
 
 @api_router.post("/roles/{role_id}/regenerate-code", response_model=RoleResponse)
 async def regenerate_access_code(role_id: str, current_user: dict = Depends(require_permission("can_manage_roles"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     existing = await db.roles.find_one({"id": role_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Role not found")
@@ -440,11 +481,16 @@ async def regenerate_access_code(role_id: str, current_user: dict = Depends(requ
 
 @api_router.get("/users", response_model=List[dict])
 async def get_users(current_user: dict = Depends(require_permission("can_manage_roles"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(100)
     return users
 
 @api_router.delete("/users/{user_id}")
 async def delete_user(user_id: str, current_user: dict = Depends(require_permission("can_manage_roles"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     user = await db.users.find_one({"id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -458,15 +504,18 @@ async def delete_user(user_id: str, current_user: dict = Depends(require_permiss
     await db.users.delete_one({"id": user_id})
     return {"message": "User deleted"}
 
-# === LEADERSHIP (Руководство штата) ===
-
 @api_router.get("/leadership", response_model=List[LeadershipResponse])
 async def get_leadership():
+    if db is None:
+        return []
     leaders = await db.leadership.find({}, {"_id": 0}).sort("order", 1).to_list(100)
     return leaders
 
 @api_router.post("/leadership", response_model=LeadershipResponse)
 async def create_leader(leader: LeadershipCreate, current_user: dict = Depends(require_permission("can_manage_leadership"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     leader_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     
@@ -481,6 +530,9 @@ async def create_leader(leader: LeadershipCreate, current_user: dict = Depends(r
 
 @api_router.put("/leadership/{leader_id}", response_model=LeadershipResponse)
 async def update_leader(leader_id: str, leader: LeadershipCreate, current_user: dict = Depends(require_permission("can_manage_leadership"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     existing = await db.leadership.find_one({"id": leader_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Leader not found")
@@ -491,20 +543,26 @@ async def update_leader(leader_id: str, leader: LeadershipCreate, current_user: 
 
 @api_router.delete("/leadership/{leader_id}")
 async def delete_leader(leader_id: str, current_user: dict = Depends(require_permission("can_delete"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     result = await db.leadership.delete_one({"id": leader_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Leader not found")
     return {"message": "Leader deleted"}
 
-# === MINISTRY ROUTES ===
-
 @api_router.get("/ministries", response_model=List[MinistryResponse])
 async def get_ministries():
+    if db is None:
+        return []
     ministries = await db.ministries.find({}, {"_id": 0}).to_list(100)
     return ministries
 
 @api_router.get("/ministries/{ministry_id}", response_model=MinistryResponse)
 async def get_ministry(ministry_id: str):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     ministry = await db.ministries.find_one({"id": ministry_id}, {"_id": 0})
     if not ministry:
         raise HTTPException(status_code=404, detail="Ministry not found")
@@ -512,6 +570,9 @@ async def get_ministry(ministry_id: str):
 
 @api_router.post("/ministries", response_model=MinistryResponse)
 async def create_ministry(ministry: MinistryCreate, current_user: dict = Depends(require_permission("can_manage_ministries"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     ministry_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     
@@ -526,6 +587,9 @@ async def create_ministry(ministry: MinistryCreate, current_user: dict = Depends
 
 @api_router.put("/ministries/{ministry_id}", response_model=MinistryResponse)
 async def update_ministry(ministry_id: str, ministry: MinistryCreate, current_user: dict = Depends(require_permission("can_manage_ministries"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     existing = await db.ministries.find_one({"id": ministry_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Ministry not found")
@@ -536,21 +600,27 @@ async def update_ministry(ministry_id: str, ministry: MinistryCreate, current_us
 
 @api_router.delete("/ministries/{ministry_id}")
 async def delete_ministry(ministry_id: str, current_user: dict = Depends(require_permission("can_delete"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     result = await db.ministries.delete_one({"id": ministry_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Ministry not found")
     return {"message": "Ministry deleted"}
 
-# === NEWS ROUTES ===
-
 @api_router.get("/news", response_model=List[NewsResponse])
 async def get_news(archive: bool = False):
+    if db is None:
+        return []
     query = {"is_archive": archive}
     news = await db.news.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     return news
 
 @api_router.get("/news/{news_id}", response_model=NewsResponse)
 async def get_news_item(news_id: str):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     news = await db.news.find_one({"id": news_id}, {"_id": 0})
     if not news:
         raise HTTPException(status_code=404, detail="News not found")
@@ -558,6 +628,9 @@ async def get_news_item(news_id: str):
 
 @api_router.post("/news", response_model=NewsResponse)
 async def create_news(news: NewsCreate, current_user: dict = Depends(require_permission("can_manage_news"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     news_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     
@@ -572,6 +645,9 @@ async def create_news(news: NewsCreate, current_user: dict = Depends(require_per
 
 @api_router.put("/news/{news_id}", response_model=NewsResponse)
 async def update_news(news_id: str, news: NewsCreate, current_user: dict = Depends(require_permission("can_manage_news"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     existing = await db.news.find_one({"id": news_id})
     if not existing:
         raise HTTPException(status_code=404, detail="News not found")
@@ -582,20 +658,26 @@ async def update_news(news_id: str, news: NewsCreate, current_user: dict = Depen
 
 @api_router.delete("/news/{news_id}")
 async def delete_news(news_id: str, current_user: dict = Depends(require_permission("can_delete"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     result = await db.news.delete_one({"id": news_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="News not found")
     return {"message": "News deleted"}
 
-# === AMENDMENTS (Поправки Сената) ===
-
 @api_router.get("/amendments", response_model=List[AmendmentResponse])
 async def get_amendments():
+    if db is None:
+        return []
     amendments = await db.amendments.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
     return amendments
 
 @api_router.get("/amendments/{amendment_id}", response_model=AmendmentResponse)
 async def get_amendment(amendment_id: str):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     amendment = await db.amendments.find_one({"id": amendment_id}, {"_id": 0})
     if not amendment:
         raise HTTPException(status_code=404, detail="Amendment not found")
@@ -603,6 +685,9 @@ async def get_amendment(amendment_id: str):
 
 @api_router.post("/amendments", response_model=AmendmentResponse)
 async def create_amendment(amendment: AmendmentCreate, current_user: dict = Depends(require_permission("can_manage_legislation"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     amendment_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     
@@ -617,6 +702,9 @@ async def create_amendment(amendment: AmendmentCreate, current_user: dict = Depe
 
 @api_router.put("/amendments/{amendment_id}", response_model=AmendmentResponse)
 async def update_amendment(amendment_id: str, amendment: AmendmentCreate, current_user: dict = Depends(require_permission("can_manage_legislation"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     existing = await db.amendments.find_one({"id": amendment_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Amendment not found")
@@ -627,12 +715,13 @@ async def update_amendment(amendment_id: str, amendment: AmendmentCreate, curren
 
 @api_router.delete("/amendments/{amendment_id}")
 async def delete_amendment(amendment_id: str, current_user: dict = Depends(require_permission("can_delete"))):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
     result = await db.amendments.delete_one({"id": amendment_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Amendment not found")
     return {"message": "Amendment deleted"}
-
-# === IMAGE UPLOAD ===
 
 @api_router.post("/upload")
 async def upload_image(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
@@ -642,25 +731,63 @@ async def upload_image(file: UploadFile = File(...), current_user: dict = Depend
     data_url = f"data:{mime_type};base64,{encoded}"
     return {"url": data_url}
 
-# === ROOT ===
-
 @api_router.get("/")
 async def root():
     return {"message": "Seattle Government API"}
 
 app.include_router(api_router)
 
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+
+if FRONTEND_DIR.exists():
+    logger.info(f"Frontend directory found at: {FRONTEND_DIR}")
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+    
+    @app.get("/")
+    async def serve_frontend():
+        index_path = FRONTEND_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        return {"error": "index.html not found"}
+    
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+        file_path = FRONTEND_DIR / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        index_path = FRONTEND_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        raise HTTPException(status_code=404, detail="Not found")
+else:
+    logger.warning(f"Frontend directory not found at: {FRONTEND_DIR}")
+    
+    @app.get("/")
+    async def root_frontend_missing():
+        return {
+            "message": "Frontend not found",
+            "api": "/api/",
+            "docs": "/docs"
+        }
+
+CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*').split(',')
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client:
+        client.close()
+        logger.info("MongoDB connection closed")
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("backend.server:app", host="0.0.0.0", port=port, reload=False)
