@@ -9,7 +9,7 @@ import Home from "./pages/Home";
 import Ministries from "./pages/Ministries";
 import MinistryDetail from "./pages/MinistryDetail";
 import News from "./pages/News";
-import Legislation from "./pages/Legislation";
+import Amendments from "./pages/Amendments";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 
@@ -24,7 +24,7 @@ function App() {
             <Route path="/ministries" element={<Ministries />} />
             <Route path="/ministries/:id" element={<MinistryDetail />} />
             <Route path="/news" element={<News />} />
-            <Route path="/legislation" element={<Legislation />} />
+            <Route path="/amendments" element={<Amendments />} />
             <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<Admin />} />
           </Routes>
