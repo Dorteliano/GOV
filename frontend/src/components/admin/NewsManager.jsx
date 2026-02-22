@@ -39,8 +39,12 @@ const NewsManager = () => {
 
   const fetchNews = async () => {
     try {
-      const response = await axios.get(`${API}/news`);
-      setNews(response.data);
+      const [newsRes, archiveRes] = await Promise.all([
+        axios.get(`${API}/news?archive=false`),
+        axios.get(`${API}/news?archive=true`)
+      ]);
+      setNews(newsRes.data);
+      setArchiveNews(archiveRes.data);
     } catch (error) {
       console.error('Failed to fetch news:', error);
       toast.error('Ошибка загрузки новостей');
@@ -48,6 +52,8 @@ const NewsManager = () => {
       setLoading(false);
     }
   };
+
+  const currentList = activeTab === 'news' ? news : archiveNews;
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
