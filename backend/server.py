@@ -217,7 +217,7 @@ async def create_ministry(ministry: MinistryCreate, current_user: dict = Depends
         "created_at": created_at
     }
     await db.ministries.insert_one(ministry_doc)
-    del ministry_doc["_id"] if "_id" in ministry_doc else None
+    ministry_doc.pop("_id", None)
     return ministry_doc
 
 @api_router.put("/ministries/{ministry_id}", response_model=MinistryResponse)
@@ -264,7 +264,7 @@ async def create_news(news: NewsCreate, current_user: dict = Depends(get_current
         "created_at": created_at
     }
     await db.news.insert_one(news_doc)
-    del news_doc["_id"] if "_id" in news_doc else None
+    news_doc.pop("_id", None)
     return news_doc
 
 @api_router.put("/news/{news_id}", response_model=NewsResponse)
@@ -309,7 +309,7 @@ async def create_legislation(law: LegislationCreate, current_user: dict = Depend
         "created_at": created_at
     }
     await db.legislation.insert_one(law_doc)
-    del law_doc["_id"] if "_id" in law_doc else None
+    law_doc.pop("_id", None)
     return law_doc
 
 @api_router.put("/legislation/{law_id}", response_model=LegislationResponse)
