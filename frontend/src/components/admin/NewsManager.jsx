@@ -204,6 +204,9 @@ const NewsManager = () => {
                       <span className="font-mono text-xs text-muted-foreground">
                         {formatDate(item.created_at)}
                       </span>
+                      {item.is_archive && (
+                        <span className="px-2 py-0.5 bg-white/10 text-xs rounded">Архив</span>
+                      )}
                     </div>
                     <h3 className="font-subheading text-lg text-white mb-1">{item.title}</h3>
                     <p className="text-muted-foreground text-sm line-clamp-2">{item.content}</p>
