@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Newspaper, Plus, Edit, Trash2, Upload, Calendar } from 'lucide-react';
+import { Newspaper, Plus, Edit, Trash2, Upload, Calendar, Archive } from 'lucide-react';
 import axios from 'axios';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
+import { Checkbox } from '../ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -18,15 +19,18 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const NewsManager = () => {
   const [news, setNews] = useState([]);
+  const [archiveNews, setArchiveNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentNews, setCurrentNews] = useState(null);
+  const [activeTab, setActiveTab] = useState('news');
   
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    image: ''
+    image: '',
+    is_archive: false
   });
 
   useEffect(() => {
