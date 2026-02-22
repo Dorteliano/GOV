@@ -1,34 +1,141 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Hero Section */
+.hero-bg {
+    background-image: linear-gradient(to bottom, rgba(3,7,18,0.3) 0%, rgba(3,7,18,1) 100%),
+                      url('https://images.unsplash.com/photo-1696150874728-d29523e6f0f4');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Card hover effects */
+.ministry-card {
+    transition: all 0.5s ease;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.ministry-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(212, 175, 55, 0.5);
 }
 
-.App-link {
-    color: #61dafb;
+.ministry-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.ministry-card:hover::before {
+    opacity: 1;
+}
+
+/* News card */
+.news-card {
+    border-left: 4px solid #D4AF37;
+    transition: all 0.3s ease;
+}
+
+.news-card:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Button styles */
+.btn-gold {
+    background-color: #D4AF37;
+    color: #000;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+}
+
+.btn-gold:hover {
+    background-color: #F3E5AB;
+    box-shadow: 0 0 25px rgba(212, 175, 55, 0.6);
+}
+
+.btn-outline-gold {
+    background: transparent;
+    border: 1px solid #D4AF37;
+    color: #D4AF37;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-gold:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
+
+/* Input styles */
+.input-dark {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transition: all 0.3s ease;
+}
+
+.input-dark:focus {
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+    outline: none;
+}
+
+.input-dark::placeholder {
+    color: #4B5563;
+}
+
+/* Parallax effect */
+.parallax {
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+/* Status badges */
+.badge-signed {
+    background: rgba(5, 150, 105, 0.2);
+    color: #059669;
+    border: 1px solid rgba(5, 150, 105, 0.3);
+}
+
+.badge-pending {
+    background: rgba(217, 119, 6, 0.2);
+    color: #D97706;
+    border: 1px solid rgba(217, 119, 6, 0.3);
+}
+
+/* Admin sidebar */
+.sidebar-link {
+    transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-link.active {
+    background: rgba(212, 175, 55, 0.1);
+    border-left: 3px solid #D4AF37;
+    color: #D4AF37;
+}
+
+/* Table styles */
+.table-dark th {
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.table-dark td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.table-dark tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
 }
