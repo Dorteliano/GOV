@@ -8,7 +8,7 @@ import { calculateDaysInPosition } from '../lib/utils';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Emblem and logo
-const EMBLEM_URL = 'https://customer-assets.emergentagent.com/job_dark-gov-agency/artifacts/xpkfdl3k_image.png';
+const EMBLEM_URL = 'https://customer-assets.emergentagent.com/job_dark-gov-agency/artifacts/wn1znkuf_image.png';
 
 const Home = () => {
   const [news, setNews] = useState([]);
