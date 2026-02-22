@@ -1,0 +1,156 @@
+{
+  "project_name": "Majestic RP Government Portal",
+  "design_philosophy": {
+    "theme": "Majestic Dark Government",
+    "core_concept": "The Authority: A cinematic, high-stakes government interface that feels like a 'Secret Service' or 'White House' terminal from a blockbuster movie.",
+    "emotional_tone": "Authoritative, Mysterious, Premium, Secure, Cinematic",
+    "visual_style": "Dark Mode Only, Gold Accents, Glassmorphism, Parallax, Micro-interactions"
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Cinzel, serif",
+      "subheadings": "Playfair Display, serif",
+      "body": "Manrope, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "font_weights": {
+      "headings": 700,
+      "subheadings": 600,
+      "body": 400
+    },
+    "cdn_imports": [
+      "@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Manrope:wght@300;400;600;800&family=JetBrains+Mono:wght@400&display=swap');"
+    ],
+    "usage_rules": {
+      "headings": "Use 'Cinzel' for main page titles and hero text. Uppercase with 'tracking-widest'.",
+      "subheadings": "Use 'Playfair Display' for section titles and card headings. Capitalize normal.",
+      "body": "Use 'Manrope' for all paragraphs, inputs, and UI elements.",
+      "special": "Use 'JetBrains Mono' for dates, ID codes, and legislation numbers."
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": {
+        "default": "#030712",
+        "paper": "#0B0F19",
+        "overlay": "rgba(3, 7, 18, 0.8)"
+      },
+      "primary": {
+        "main": "#D4AF37",
+        "light": "#F3E5AB",
+        "dark": "#8A7120",
+        "contrast": "#000000"
+      },
+      "secondary": {
+        "main": "#1E40AF",
+        "light": "#60A5FA",
+        "dark": "#172554"
+      },
+      "text": {
+        "primary": "#F9FAFB",
+        "secondary": "#9CA3AF",
+        "muted": "#4B5563",
+        "accent": "#D4AF37"
+      },
+      "status": {
+        "success": "#059669",
+        "error": "#DC2626",
+        "warning": "#D97706",
+        "info": "#2563EB"
+      },
+      "border": {
+        "subtle": "rgba(255, 255, 255, 0.1)",
+        "highlight": "rgba(212, 175, 55, 0.3)"
+      }
+    },
+    "gradients": {
+      "hero_overlay": "linear-gradient(to bottom, rgba(3,7,18,0) 0%, rgba(3,7,18,1) 100%)",
+      "gold_shine": "linear-gradient(45deg, #8A7120, #D4AF37, #F3E5AB, #D4AF37, #8A7120)",
+      "blue_glow": "radial-gradient(circle at center, rgba(30, 64, 175, 0.2) 0%, transparent 70%)"
+    }
+  },
+  "layout_strategy": {
+    "grid_system": "Bento Grid (See E1 Spacing Strategy)",
+    "container_width": "max-w-7xl mx-auto px-6 sm:px-8",
+    "spacing": {
+      "section_gap": "py-24",
+      "card_padding": "p-8",
+      "element_gap": "gap-6"
+    },
+    "z_index": {
+      "modal": 50,
+      "header": 40,
+      "overlay": 30,
+      "content": 10,
+      "background": 0
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary-main text-black hover:bg-primary-light font-bold uppercase tracking-wider rounded-sm transition-all duration-300 shadow-[0_0_15px_rgba(212,175,55,0.3)] hover:shadow-[0_0_25px_rgba(212,175,55,0.6)]",
+      "secondary": "bg-transparent border border-primary-main text-primary-main hover:bg-primary-main/10 uppercase tracking-wider rounded-sm",
+      "ghost": "text-gray-400 hover:text-white hover:bg-white/5"
+    },
+    "cards": {
+      "ministry_card": "bg-background-paper border border-white/5 hover:border-primary-main/50 transition-all duration-500 group relative overflow-hidden rounded-md",
+      "news_card": "bg-background-paper border-l-4 border-l-primary-main hover:bg-white/5 transition-colors p-6",
+      "stat_card": "bg-background-paper/50 backdrop-blur-md border border-white/10 p-6 rounded-lg"
+    },
+    "inputs": {
+      "default": "bg-black/50 border border-white/10 focus:border-primary-main text-white placeholder-gray-600 rounded-sm focus:ring-1 focus:ring-primary-main/50 transition-all"
+    }
+  },
+  "animations": {
+    "library": "framer-motion",
+    "transitions": {
+      "hover": "transition-all duration-300 ease-out",
+      "page_load": "duration-700 ease-in-out"
+    },
+    "custom_effects": {
+      "fade_up": {
+        "initial": { "opacity": 0, "y": 20 },
+        "animate": { "opacity": 1, "y": 0 }
+      },
+      "reveal": {
+        "initial": { "clipPath": "inset(0 100% 0 0)" },
+        "animate": { "clipPath": "inset(0 0 0 0)" }
+      }
+    }
+  },
+  "assets": {
+    "images": {
+      "hero_bg": "https://images.pexels.com/photos/35291221/pexels-photo-35291221.jpeg",
+      "flag_bg": "https://images.unsplash.com/photo-1696150874728-d29523e6f0f4",
+      "gov_building": "https://images.unsplash.com/photo-1759550800462-2524fcf9eb3f",
+      "cabinet_meeting": "https://images.unsplash.com/photo-1649186021302-1eb2838f283b",
+      "gold_emblem": "https://images.pexels.com/photos/16329596/pexels-photo-16329596.jpeg"
+    },
+    "icons": "Lucide React (Official, clean, sharp)",
+    "logo_placeholder": "Use 'Cinzel' text 'MAJESTIC GOV' with a gold star icon if no logo image provided."
+  },
+  "modules": {
+    "home": {
+      "sections": ["Hero (Parallax)", "Mission Statement (Typography focus)", "Latest Decrees (News Ticker)", "Quick Links (Grid)"]
+    },
+    "ministries": {
+      "layout": "Grid of cards. Each card shows Ministry Name, Icon, and Minister Name. On click -> Detail View.",
+      "detail_view": "Header with Ministry Logo. 'Chain of Command' tree visualization for Minister -> Deputies."
+    },
+    "legislation": {
+      "style": "Data Table with 'Redacted' effects. Search bar looks like a command line.",
+      "columns": ["Date", "Decree #", "Title", "Status (Signed/Pending)"]
+    },
+    "admin": {
+      "style": "High-density dashboard. Sidebar navigation. Data tables for CRUD. Image uploaders with preview."
+    }
+  },
+  "universal_guidelines": [
+    "NEVER use gradients for text readability backgrounds - use solid colors with high opacity or blur.",
+    "ALWAYS use 'Cinzel' for the word 'GOVERNMENT' or 'MAJESTIC'.",
+    "Dark mode is NOT optional. It is the only mode.",
+    "Input fields must look like terminal inputs or premium forms, not default browser inputs.",
+    "Use Gold (#D4AF37) sparingly - only for emphasis (Buttons, Active States, Borders).",
+    "Images must have a slight desaturation filter (grayscale: 20%) to blend with the dark theme, unless hovered."
+  ],
+  "instructions_to_main_agent": "1. Install 'framer-motion' and 'lucide-react'. 2. Configure Tailwind with the colors provided. 3. Create the 'MinistryCard' and 'NewsItem' components first. 4. Use the provided image URLs for the respective sections. 5. Ensure the 'Admin' section is protected by JWT check (mock if backend not ready). 6. Use 'Manrope' for all UI text to ensure readability."
+}
